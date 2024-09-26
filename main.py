@@ -19,7 +19,7 @@ current_unix_timestamp = get_current_unix_timestamp()
 # Get new asset data if the timestamp is greater than 1 day
 highest_timestamp_asset_data = asset_data["timestamp"].max()
 
-if highest_timestamp_asset_data + 86400 < current_unix_timestamp:
+if highest_timestamp_asset_data + 8640 < current_unix_timestamp:
     logger.info("Fetching new asset data")
     new_asset_data = get_new_asset_data()
     new_asset_data_df = pd.DataFrame(new_asset_data)
@@ -34,7 +34,7 @@ else:
 # Get new user data if the timestamp is greater than 1 day
 highest_timestamp_user_data = user_data["timestamp"].max() 
 
-if highest_timestamp_user_data + 86400 < current_unix_timestamp:
+if highest_timestamp_user_data + 8640 < current_unix_timestamp:
     logger.info("Fetching new user data")
     new_user_data = get_user_data()
     merge_and_save(user_data, new_user_data, "./data/user_data.csv")
@@ -54,7 +54,7 @@ for user in user_addresses:
 
 highest_timestamp_user_position_data = user_position_data["timestamp"].max()
 
-if highest_timestamp_user_position_data + 86400 < current_unix_timestamp:
+if highest_timestamp_user_position_data + 8640 < current_unix_timestamp:
     logger.info("Fetching new user position data")
     new_user_position_data = get_user_position_data(users_checksum, new_asset_data)
     merge_and_save(user_position_data, new_user_position_data, "./data/user_position_data.csv")
@@ -87,14 +87,6 @@ for column in new_user_position_data.columns:
         new_df[f'{column}_value'] = new_user_position_data[column] * price
 
 logger.info("New DataFrame with value columns has been created")
-
-import seaborn as sns
-import matplotlib.pyplot as plt
-import pandas as pd
-
-
-
-
 
 # import plotly.graph_objects as go
 # import pandas as pd
@@ -187,8 +179,6 @@ st.set_page_config(layout="wide")
 # Add title to your Streamlit app
 st.title('Asset Debt Proportion Visualization')
 
-# Print column names to debug
-print("Columns in new_df:", new_df.columns.tolist())
 
 # Get all asset symbols (a{symbol})
 asset_symbols = [col[1:] for col in new_df.columns if col.startswith('a') and not col.endswith('_value')]
@@ -196,8 +186,6 @@ asset_symbols = [col[1:] for col in new_df.columns if col.startswith('a') and no
 # Get all debt symbols (d{symbol})
 debt_symbols = [col[1:] for col in new_df.columns if col.startswith('d') and not col.endswith('_value')]
 
-print("Asset symbols:", asset_symbols)
-print("Debt symbols:", debt_symbols)
 
 # Function to create proportional bar chart for a single asset
 def create_proportion_chart(asset, data, sorted_debt_symbols):
