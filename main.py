@@ -410,45 +410,66 @@ filtered_data = new_user_position_data[new_user_position_data['total_user_debt']
 # Filter for emode 0
 filtered_data = filtered_data[filtered_data['emode'] == 0]
 
-# Create the scatter plot: total_actual_collateral vs health_ratio
-fig2 = px.scatter(filtered_data, 
-                 x='health_ratio', 
-                 y='total_actual_collateral', 
-                 size='total_user_debt',
-                 hover_data=['total_user_debt', 'health_ratio'],
-                 labels={
-                     'health_ratio': 'Health Ratio',
-                     'total_actual_collateral': 'Total Actual Collateral',
-                     'total_user_debt': 'Total User Debt'
-                 },
-                 title='User Positions: Actual Collateral vs Health Ratio (Debt > 100)')
+# Sort the dataframe by health_ratio
+sorted_data = filtered_data.sort_values('health_ratio')
 
-# Update layout to set axis ranges and increase size
+# Create cumulative_collateral column
+sorted_data['cumulative_collateral'] = sorted_data['total_actual_collateral'].cumsum()
+
+# Create the line chart with area and hover information
+fig2 = go.Figure()
+
+fig2.add_trace(go.Scatter(
+    x=sorted_data['health_ratio'],
+    y=sorted_data['cumulative_collateral'],
+    fill='tozeroy',
+    fillcolor='rgba(0, 100, 80, 0.2)',
+    line=dict(color='rgb(0, 100, 80)', width=2),
+    name='Cumulative Collateral',
+    hovertemplate='<b>Health Ratio</b>: %{x:.2f}' +
+                  '<br><b>Cumulative Collateral</b>: $%{y:,.2f}' +
+                  '<br><b>Collateral Added</b>: $%{customdata:,.2f}<extra></extra>',
+    customdata=sorted_data['total_actual_collateral']
+))
+
+# Add vertical lines at key health ratios
+for ratio in [1, 1.5]:
+    fig2.add_vline(x=ratio, line_dash="dash", line_color="red", opacity=0.5)
+    y_position = sorted_data.loc[sorted_data['health_ratio'] >= ratio, 'cumulative_collateral'].iloc[0]
+    fig2.add_annotation(x=ratio, y=y_position, text=f"HR = {ratio}", showarrow=True, arrowhead=2, arrowcolor="black")
+
+# Update layout
 fig2.update_layout(
-    xaxis_range=[0, 5],
-    yaxis_range=[2, 8.5],
-    height=1000,  # Increase height
-    width=1000,  # Increase width
+    title='User Positions: Cumulative Collateral vs Health Ratio',
+    xaxis_title='Health Ratio',
+    yaxis_title='Cumulative Collateral ($)',
+    xaxis_range=[0, 2.5],
+    height=600,
+    width=1000,
+    hovermode='x unified'
 )
 
 # Update y-axis to logarithmic scale
 fig2.update_yaxes(type='log')
 
-# Update marker properties
-fig2.update_traces(
-    marker=dict(
-        color='blue',  # Set a solid color (you can change 'blue' to any color you prefer)
-        line=dict(color='black', width=0),  # This sets the border
-        opacity=0.5,   # Add some transparency
-        sizemode='area',  # Scale size by area instead of diameter
-        sizeref=2.*max(filtered_data['total_user_debt'])/(70**2),  # Scale factor for marker size
-    )
-)
-
 # Display the plot
 st.plotly_chart(fig2, use_container_width=True)
 
-# new_user_position_data.to_csv("./data/user_position_data_with_metrics.csv", index=False)
+# Add information about total collateral and other metrics
+total_collateral = sorted_data['total_actual_collateral'].sum()
+users_below_1 = sorted_data[sorted_data['health_ratio'] < 1]['total_actual_collateral'].sum()
+users_below_1_5 = sorted_data[sorted_data['health_ratio'] < 1.5]['total_actual_collateral'].sum()
+
+st.write(f"Total Collateral: ${total_collateral:,.2f}")
+st.write(f"Collateral with Health Ratio < 1: ${users_below_1:,.2f} ({users_below_1/total_collateral:.2%})")
+st.write(f"Collateral with Health Ratio < 1.5: ${users_below_1_5:,.2f} ({users_below_1_5/total_collateral:.2%})")
+
+
+
+
+
+
+
 
 # Add download buttons for CSV files
 st.header("Download Data")
