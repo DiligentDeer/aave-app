@@ -3,7 +3,15 @@ from web3 import Web3
 from utils import get_new_asset_data, merge_and_save, get_current_unix_timestamp, get_user_data, get_user_position_data
 import logging
 import streamlit as st
+import plotly.graph_objects as go
+import plotly.express as px
+import pandas as pd
+import streamlit as st
+import locale
+from plotly.subplots import make_subplots
 
+import plotly.graph_objects as go
+import numpy as np
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +27,7 @@ current_unix_timestamp = get_current_unix_timestamp()
 # Get new asset data if the timestamp is greater than 1 day
 highest_timestamp_asset_data = asset_data["timestamp"].max()
 
-if highest_timestamp_asset_data + 8640 < current_unix_timestamp:
+if highest_timestamp_asset_data + 86400 < current_unix_timestamp:
     logger.info("Fetching new asset data")
     new_asset_data = get_new_asset_data()
     new_asset_data_df = pd.DataFrame(new_asset_data)
@@ -28,13 +36,12 @@ if highest_timestamp_asset_data + 8640 < current_unix_timestamp:
 else:
     logger.info("Using existing asset data")
     new_asset_data = asset_data.loc[asset_data['timestamp'].idxmax()].to_frame().transpose().to_dict(orient='records')[0]
-    print(new_asset_data)
     new_asset_data_df = asset_data[asset_data['timestamp'] == highest_timestamp_asset_data]
     
 # Get new user data if the timestamp is greater than 1 day
 highest_timestamp_user_data = user_data["timestamp"].max() 
 
-if highest_timestamp_user_data + 8640 < current_unix_timestamp:
+if highest_timestamp_user_data + 86400 < current_unix_timestamp:
     logger.info("Fetching new user data")
     new_user_data = get_user_data()
     merge_and_save(user_data, new_user_data, "./data/user_data.csv")
@@ -54,7 +61,7 @@ for user in user_addresses:
 
 highest_timestamp_user_position_data = user_position_data["timestamp"].max()
 
-if highest_timestamp_user_position_data + 8640 < current_unix_timestamp:
+if highest_timestamp_user_position_data + 86400 < current_unix_timestamp:
     logger.info("Fetching new user position data")
     new_user_position_data = get_user_position_data(users_checksum, new_asset_data)
     merge_and_save(user_position_data, new_user_position_data, "./data/user_position_data.csv")
@@ -88,91 +95,6 @@ for column in new_user_position_data.columns:
 
 logger.info("New DataFrame with value columns has been created")
 
-# import plotly.graph_objects as go
-# import pandas as pd
-# import numpy as np
-# import streamlit as st
-
-# # Print column names to debug
-# print("Columns in new_df:", new_df.columns.tolist())
-
-# # Get all asset symbols (a{symbol})
-# asset_symbols = [col[1:] for col in new_df.columns if col.startswith('a') and not col.endswith('_value')]
-
-# # Get all debt symbols (d{symbol})
-# debt_symbols = [col[1:] for col in new_df.columns if col.startswith('d') and not col.endswith('_value')]
-
-# print("Asset symbols:", asset_symbols)
-# print("Debt symbols:", debt_symbols)
-
-# # Function to create heatmap for a single asset
-# def create_heatmap(asset, data, sorted_debt_symbols):
-#     fig = go.Figure(data=go.Heatmap(
-#         z=[data],
-#         x=sorted_debt_symbols,
-#         y=[asset],
-#         colorscale='viridis',
-#         hoverongaps=False
-#     ))
-    
-#     fig.update_layout(
-#         title=f"Heatmap for {asset}",
-#         xaxis_title="Debt Symbols",
-#         yaxis_title="Asset",
-#         height=300,  # Increased height
-#         width=1000,  # Increased width
-#         xaxis=dict(
-#             tickangle=-90,  # Rotate x-axis labels by 90 degrees
-#             side='bottom'
-#         ),
-#         yaxis=dict(tickangle=0),
-#         annotations=[
-#             dict(
-#                 x=sorted_debt_symbols[i],
-#                 y=asset,
-#                 text=f'{val:.2e}',
-#                 showarrow=False,
-#                 font=dict(size=14),
-#                 textangle=-90,  # Rotate text by 90 degrees
-#                 yshift=65  # Move text above the heatmap
-#             ) for i, val in enumerate(data)
-#         ]
-#     )
-    
-#     return fig
-
-# # Create a heatmap for each asset
-# for asset in asset_symbols:
-#     heatmap_data = []
-#     for debt in debt_symbols:
-#         mask = new_df[f'a{asset}_value'] > 0
-#         if f'd{debt}' in new_df.columns:
-#             value = new_df.loc[mask, f'd{debt}_value'].sum()
-#         else:
-#             value = 0
-#         if value >= 100:  # Only include values >= 100
-#             heatmap_data.append((debt, value))
-    
-#     # If there's no data above 100, skip this asset
-#     if not heatmap_data:
-#         continue
-    
-#     # Sort the heatmap_data by value in descending order
-#     heatmap_data.sort(key=lambda x: x[1], reverse=True)
-    
-#     # Separate the sorted data back into debt symbols and values
-#     sorted_debt_symbols, sorted_values = zip(*heatmap_data)
-    
-#     fig = create_heatmap(asset, sorted_values, sorted_debt_symbols)
-#     st.plotly_chart(fig, use_container_width=True)
-
-# logger.info("Heatmaps have been created")
-
-import plotly.graph_objects as go
-import pandas as pd
-import numpy as np
-import streamlit as st
-
 # Set the layout width to a wider size
 st.set_page_config(layout="wide")
 
@@ -181,53 +103,105 @@ st.title('Asset Debt Proportion Visualization')
 
 
 # Get all asset symbols (a{symbol})
-asset_symbols = [col[1:] for col in new_df.columns if col.startswith('a') and not col.endswith('_value')]
+collateral_symbols = [col[1:] for col in new_df.columns if col.startswith('a') and not col.endswith('_value')]
 
 # Get all debt symbols (d{symbol})
 debt_symbols = [col[1:] for col in new_df.columns if col.startswith('d') and not col.endswith('_value')]
 
+# Set the locale for number formatting
+locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
-# Function to create proportional bar chart for a single asset
-def create_proportion_chart(asset, data, sorted_debt_symbols):
+def create_proportion_charts(asset, data, sorted_debt_symbols, new_asset_data):
     total = sum(data)
-    proportions = [val / total for val in data]
+    threshold = 0.01  # 1% threshold
     
-    fig = go.Figure(go.Bar(
-        y=[asset] * len(data),
-        x=data,
-        orientation='h',
-        marker=dict(
-            color=proportions,
-            colorscale='Viridis',
-            showscale=True
-        ),
-        text=[f'{debt}: {val:.2e} ({prop:.2%})' for debt, val, prop in zip(sorted_debt_symbols, data, proportions)],
-        textposition='inside',
-        insidetextanchor='middle',
-        hoverinfo='text'
-    ))
+    # Convert new_asset_data to DataFrame if it's a list
+    if isinstance(new_asset_data, list):
+        new_asset_data = pd.DataFrame(new_asset_data)
     
+    # Create a list of tuples (debt, value, proportion)
+    debt_data = list(zip(sorted_debt_symbols, data, [val / total for val in data]))
+    
+    # Separate data into main categories and others
+    main_categories = [item for item in debt_data if item[2] >= threshold]
+    others = [item for item in debt_data if item[2] < threshold]
+    
+    # Add "Others" category for the pie chart only
+    if others:
+        others_value = sum(item[1] for item in others)
+        others_proportion = sum(item[2] for item in others)
+        main_categories_with_others = main_categories + [("Others", others_value, others_proportion)]
+    else:
+        main_categories_with_others = main_categories
+    
+    # Sort main categories by value (descending order)
+    main_categories_with_others.sort(key=lambda x: x[1], reverse=True)
+    
+    # Unzip the sorted data for the pie chart
+    labels_pie, values_pie, proportions_pie = zip(*main_categories_with_others)
+    
+    fig = make_subplots(rows=1, cols=2, specs=[[{'type':'domain'}, {'type':'xy'}]])
+    
+    # Add pie chart
+    fig.add_trace(go.Pie(
+        labels=labels_pie,
+        values=values_pie,
+        textinfo='percent',
+        hoverinfo='label+value+percent',
+        marker=dict(colors=px.colors.qualitative.Set3)
+    ), 1, 1)
+    
+    # Add bar chart
+    fig.add_trace(go.Bar(
+        x=[label for label in labels_pie if label != "Others"],
+        y=[prop * 100 for label, prop in zip(labels_pie, proportions_pie) if label != "Others"],
+        text=[f'{prop:.1%}' for label, prop in zip(labels_pie, proportions_pie) if label != "Others"],
+        textposition='auto',
+        marker_color=px.colors.qualitative.Set3[:len(labels_pie)-1]
+    ), 1, 2)
+    
+    # Update layout
     fig.update_layout(
         title=f"Debt Proportion for {asset}",
-        xaxis_title="Value",
-        yaxis_title="Asset",
-        height=300,
-        width=1000,
-        bargap=0,
-        xaxis=dict(
-            type='linear',  # Use linear scale
-            range=[0, max(data) * 1.1]  # Set range from 0 to slightly above the maximum value
-        ),
-        yaxis=dict(tickangle=0),
-        coloraxis_showscale=True
+        height=500,
+        width=1200,  # Increased width to accommodate both charts
     )
     
-    return fig
+    # Update bar chart axis
+    fig.update_yaxes(title_text='Proportion (%)', row=1, col=2)
+    fig.update_xaxes(title_text='Debt Assets', row=1, col=2)
+    
+    
+    
+    
+    
+    # Create table data (excluding "Others")
+    table_data = pd.DataFrame({
+        'Debt': [item[0] for item in main_categories],
+        'Value': [item[1] for item in main_categories],
+        'Proportion': [f'{item[2]:.2%}' for item in main_categories]
+    })
+    
+    # Add new columns
+    for label in table_data['Debt']:
+        asset_data = new_asset_data[new_asset_data['symbol'] == label]
+        if not asset_data.empty:
+            asset_data = asset_data.iloc[0]
+            table_data.loc[table_data['Debt'] == label, 'Borrow Cap'] = asset_data['borrowCap']
+            table_data.loc[table_data['Debt'] == label, '% of Borrow Cap'] = 100 * asset_data['debtSupply'] / asset_data['borrowCap'] if asset_data['borrowCap'] != 0 else 0
+            table_data.loc[table_data['Debt'] == label, 'Current Borrow'] = asset_data['debtSupply']
+            table_data.loc[table_data['Debt'] == label, 'Current Borrow $'] = asset_data['debtSupply'] * asset_data['price']
+            
+    
+    # Calculate % of Current Borrow
+    table_data['% of Current Borrow'] = table_data['Value'] / table_data['Current Borrow $'] * 100
+    
+    return fig, table_data
 
 # Create a dictionary to store the data for each asset
-asset_data = {}
+collateral_data = {}
 
-for asset in asset_symbols:
+for asset in collateral_symbols:
     heatmap_data = []
     for debt in debt_symbols:
         mask = new_df[f'a{asset}_value'] > 0
@@ -248,17 +222,144 @@ for asset in asset_symbols:
     # Separate the sorted data back into debt symbols and values
     sorted_debt_symbols, sorted_values = zip(*heatmap_data)
     
-    asset_data[asset] = (sorted_debt_symbols, sorted_values)
+    collateral_data[asset] = (sorted_debt_symbols, sorted_values)
 
+
+# New section: Create a dictionary to store the data for each debt
+debt_data = {}
+
+for debt in debt_symbols:
+    heatmap_data = []
+    for asset in collateral_symbols:
+        mask = new_df[f'd{debt}_value'] > 0
+        if f'a{asset}' in new_df.columns:
+            value = new_df.loc[mask, f'a{asset}_value'].sum()
+        else:
+            value = 0
+        if value >= 100:  # Only include values >= 100
+            heatmap_data.append((asset, value))
+    
+    # If there's no data above 100, skip this debt
+    if not heatmap_data:
+        continue
+    
+    # Sort the heatmap_data by value in descending order
+    heatmap_data.sort(key=lambda x: x[1], reverse=True)
+    
+    # Separate the sorted data back into collateral symbols and values
+    sorted_collateral_symbols, sorted_values = zip(*heatmap_data)
+    
+    debt_data[debt] = (sorted_collateral_symbols, sorted_values)
+
+def format_value(val, column):
+        if pd.isna(val) or val == '':
+            return 'N/A'
+        try:
+            float_val = float(val)
+            if column in ['Value', 'Current Borrow $']:
+                return f'${float_val:,.0f}'
+                # return f'${locale.format_string("%,.2f", float_val, grouping=True)}'
+            elif column in ['% of Borrow Cap', '% of Current Borrow']:
+                return f'{float_val:.2f}%'
+            else:
+                return f'{float_val:,.0f}'
+        except (ValueError, TypeError):
+            return str(val)
+        
+def format_table_data(table_data):
+    formatted_table_data = table_data.copy()
+    for col in formatted_table_data.columns:
+        if col not in ['Debt', 'Proportion']:  # Skip non-numeric columns
+            formatted_table_data[col] = formatted_table_data[col].apply(lambda x: format_value(x, col))
+    return formatted_table_data
+        
+        
+        
 # Create a dropdown for asset selection
-selected_asset = st.selectbox('Select an asset:', list(asset_data.keys()))
+selected_asset = st.selectbox('Select an asset:', list(collateral_data.keys()))
 
-# Display the chart for the selected asset
-if selected_asset in asset_data:
-    sorted_debt_symbols, sorted_values = asset_data[selected_asset]
-    fig = create_proportion_chart(selected_asset, sorted_values, sorted_debt_symbols)
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.write("No data available for the selected asset.")
+# Display detailed information for the selected asset
+if selected_asset in collateral_data:
+    st.header(f"Detailed Information for {selected_asset}")
+    
+    # Get the asset data
+    asset_info = new_asset_data_df[new_asset_data_df['symbol'] == selected_asset].iloc[0]
+    
+    collateral_supply_value = asset_info['collateralSupply'] * asset_info['price']
+    debt_supply_value = asset_info['debtSupply'] * asset_info['price']
+    utilization_rate = debt_supply_value / collateral_supply_value if collateral_supply_value > 0 else 0
+    
+    borrow_cap_ratio = asset_info['debtSupply'] / asset_info['borrowCap']
+    supply_cap_ratio = asset_info['collateralSupply'] / asset_info['supplyCap']
+    
+    # Create three columns for layout
+    col1, col2, col3, col4 = st.columns(4)
+    
+    
+    with col1:
+        st.metric("Current Price", f"${asset_info['price']:,.2f}")
+        st.metric("LTV", f"{asset_info['ltv']:.2%}")
+        st.metric("Liquidation Threshold", f"{asset_info['liquidationThreshold']:.2%}")
+    
+    with col2:
+        st.metric("Borrow Cap", f"{asset_info['borrowCap']:,.0f}")
+        st.metric("Supply Cap", f"{asset_info['supplyCap']:,.0f}")
+        st.metric("Liquidation Bonus", f"{asset_info['liquidationBonus']:.2%}")
+    
+    with col3:
+        st.metric("Current Debt", f"{asset_info['debtSupply']:,.0f}")
+        st.metric("Current Supply", f"{asset_info['collateralSupply']:,.0f}")
+        st.metric("Reserve Factor", f"{asset_info['reserveFactor']:.2%}")
+    
+    with col4:
+        st.metric("% Lent", f"{borrow_cap_ratio:,.2%}")
+        st.metric("% Supplied", f"{supply_cap_ratio:.2%}")
+        st.metric("Utilization Rate", f"{utilization_rate:.2%}")
+        
+    
+    
+    
 
-logger.info("Proportion chart has been created for the selected asset")
+    # Display asset addresses
+    st.subheader("Asset Addresses")
+    st.write(f"Asset Address: `{asset_info['assetAddress']}`")
+    st.write(f"aToken Address: `{asset_info['aTokenAddress']}`")
+    st.write(f"Variable Debt Token Address: `{asset_info['variableDebtTokenAddress']}`")
+
+
+
+
+# Create tabs for Collateral and Debt views
+tab1, tab2 = st.tabs(["Collateral View", "Debt View"])
+
+with tab1:
+    st.header("Collateral Analysis")
+    # Existing code for collateral analysis
+    selected_asset = st.selectbox('Select a collateral asset:', list(collateral_data.keys()), key='collateral_select')
+    
+    if selected_asset in collateral_data:
+        sorted_debt_symbols, sorted_values = collateral_data[selected_asset]
+        fig, table_data = create_proportion_charts(selected_asset, sorted_values, sorted_debt_symbols, new_asset_data_df)
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.write("Debt Breakdown:")
+        formatted_table_data = format_table_data(table_data)
+        st.dataframe(formatted_table_data)
+
+with tab2:
+    st.header("Debt Analysis")
+    # New code for debt analysis
+    selected_debt = st.selectbox('Select a debt asset:', list(debt_data.keys()), key='debt_select')
+    
+    if selected_debt in debt_data:
+        sorted_collateral_symbols, sorted_values = debt_data[selected_debt]
+        fig, table_data = create_proportion_charts(selected_debt, sorted_values, sorted_collateral_symbols, new_asset_data_df)
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.write("Collateral Breakdown:")
+        formatted_table_data = format_table_data(table_data)
+        st.dataframe(formatted_table_data)
+
+logger.info("Pie charts and tables have been created for both collateral and debt views")

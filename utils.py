@@ -308,6 +308,28 @@ def get_user_balance(user_addrress_list, asset, block_number=None):
     except Exception as e:
         return f'Error querying smart contract: {e}'
     
+
+def get_supply(asset, block_number=None):
+    
+    SUPPLY_ABI = [{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]
+    try:
+        # Create contract instance
+        contract = W33.eth.contract(address=Web3.to_checksum_address(asset), abi=SUPPLY_ABI)
+        
+        # Get the contract function
+        contract_function = getattr(contract.functions, "totalSupply")
+        
+        # Call the function with arguments and block identifier if provided
+        if block_number is not None:
+            data = contract_function().call(block_identifier=int(block_number))
+        else:
+            data = contract_function().call()
+        
+        return data
+    
+    except Exception as e:
+        return f'Error querying smart contract: {e}'
+    
 ##### Function in Functions #####
 
 def get_new_asset_data() -> List[Dict[str, Union[int, str, float]]]:
@@ -331,6 +353,10 @@ def get_new_asset_data() -> List[Dict[str, Union[int, str, float]]]:
         data_dict["variableDebtTokenAddress"] = reserve_data[10]
         
         decoded_configuration = decode_reserve_configuration(reserve_data[0][0])
+        
+        data_dict["collateralSupply"] = get_supply(reserve_data[8]) / 10**decoded_configuration["decimals"]
+        data_dict["debtSupply"] = get_supply(reserve_data[10]) / 10**decoded_configuration["decimals"]
+        
         data_dict.update(decoded_configuration)
         data.append(data_dict)
         
