@@ -20,33 +20,8 @@ ALCHEMY_KEY = os.getenv("ALCHEMY_KEY_2")
 INFURA_KEY = os.getenv("INFURA_KEY")
 
 ##### Declare constants #####
-BAL_ADDRESS = "0x2a879c62119DcA3601e54990F712F1bBf026612c"
-ABI_BAL = [
-    {
-        "inputs": [
-            {
-                "internalType": "address[]",
-                "name": "addresses",
-                "type": "address[]"
-            },
-            {
-                "internalType": "address",
-                "name": "tokenAddress",
-                "type": "address"
-            }
-        ],
-        "name": "checkBalances",
-        "outputs": [
-            {
-                "internalType": "uint256[]",
-                "name": "",
-                "type": "uint256[]"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    }
-]
+BAL_ADDRESS = "0x5c438e0e82607a3a07e6726b10e200739635895b"
+ABI_BAL = [{"inputs":[{"internalType":"address","name":"proxyContractAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[{"internalType":"address[]","name":"addresses","type":"address[]"}],"name":"batchUserEMode","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address[]","name":"addresses","type":"address[]"},{"internalType":"address","name":"tokenAddress","type":"address"}],"name":"checkBalances","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"}]
 
 POOL_ADDRESS = "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"
 ABI_POOL = [
@@ -152,7 +127,7 @@ ABI_POOL = [
         ],
         "stateMutability": "view",
         "type": "function"
-    }
+    },{"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getUserEMode","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
 ]
 
 DATA_PROVIDER = "0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3"
@@ -330,6 +305,26 @@ def get_supply(asset, block_number=None):
     except Exception as e:
         return f'Error querying smart contract: {e}'
     
+def get_emode(user_list, block_number=None):
+    
+    try:
+        # Create contract instance
+        contract = W33.eth.contract(address=Web3.to_checksum_address(BAL_ADDRESS), abi=ABI_BAL)
+        
+        # Get the contract function
+        contract_function = getattr(contract.functions, "batchUserEMode")
+        
+        # Call the function with arguments and block identifier if provided
+        if block_number is not None:
+            data = contract_function(user_list).call(block_identifier=int(block_number))
+        else:
+            data = contract_function(user_list).call()
+        
+        return data
+    
+    except Exception as e:
+        return f'Error querying smart contract: {e}'
+    
 ##### Function in Functions #####
 
 def get_new_asset_data() -> List[Dict[str, Union[int, str, float]]]:
@@ -387,8 +382,13 @@ def get_user_position_data(users_checksum, asset_data) -> pd.DataFrame:
     for user in users_checksum:
         user_position_dict = {"user": user}
         user_position_dict["timestamp"] = TIME_STAMP
+        # user_position_dict["emode"] = get_emode(user)
         user_position.append(user_position_dict)
 
+    emode = get_emode(users_checksum)
+    for index, user_dict in enumerate(user_position):
+        user_dict["emode"] = emode[index]     
+        
     for asset in asset_data:
         decimals = asset["decimals"]
         

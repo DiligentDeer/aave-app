@@ -363,3 +363,117 @@ with tab2:
         st.dataframe(formatted_table_data)
 
 logger.info("Pie charts and tables have been created for both collateral and debt views")
+
+
+
+# Create a mapping from new_asset_data_df
+asset_mapping = new_asset_data_df.set_index('symbol')[['price', 'liquidationThreshold']].to_dict('index')
+
+# Function to calculate total scaled collateral and total user debt
+def calculate_user_metrics(row):
+    total_scaled_collateral = 0
+    total_actual_collateral = 0  # Initialize this variable
+    total_user_debt = 0
+    
+    for symbol, data in asset_mapping.items():
+        # Calculate scaled collateral
+        collateral_col = f"a{symbol}"
+        if collateral_col in row.index:
+            total_scaled_collateral += row[collateral_col] * data['liquidationThreshold'] * data['price']
+            total_actual_collateral += row[collateral_col] * data['price']
+        
+        # Calculate user debt
+        debt_col = f"d{symbol}"
+        if debt_col in row.index:
+            total_user_debt += row[debt_col] * data['price']
+    
+    return pd.Series({
+        'total_scaled_collateral': total_scaled_collateral,
+        'total_actual_collateral': total_actual_collateral,
+        'total_user_debt': total_user_debt
+    })
+
+# Apply the function to new_user_position_data
+new_user_position_data[['total_scaled_collateral', 'total_actual_collateral', 'total_user_debt']] = new_user_position_data.apply(calculate_user_metrics, axis=1)
+
+# Calculate health ratio
+new_user_position_data['health_ratio'] = new_user_position_data['total_scaled_collateral'] / new_user_position_data['total_user_debt']
+
+# Replace infinity values with a large number (for cases where total_user_debt is 0)
+new_user_position_data['health_ratio'] = new_user_position_data['health_ratio'].replace([np.inf, -np.inf], 1e6)
+
+# Handle NaN values (for cases where both total_scaled_collateral and total_user_debt are 0)
+new_user_position_data['health_ratio'] = new_user_position_data['health_ratio'].fillna(0)
+
+# Filter the dataframe for total_user_debt > 100
+filtered_data = new_user_position_data[new_user_position_data['total_user_debt'] > 100]
+# Filter for emode 0
+filtered_data = filtered_data[filtered_data['emode'] == 0]
+
+# Create the scatter plot: total_actual_collateral vs health_ratio
+fig2 = px.scatter(filtered_data, 
+                 x='health_ratio', 
+                 y='total_actual_collateral', 
+                 size='total_user_debt',
+                 hover_data=['total_user_debt', 'health_ratio'],
+                 labels={
+                     'health_ratio': 'Health Ratio',
+                     'total_actual_collateral': 'Total Actual Collateral',
+                     'total_user_debt': 'Total User Debt'
+                 },
+                 title='User Positions: Actual Collateral vs Health Ratio (Debt > 100)')
+
+# Update layout to set axis ranges and increase size
+fig2.update_layout(
+    xaxis_range=[0, 5],
+    yaxis_range=[2, 8.5],
+    height=1000,  # Increase height
+    width=1000,  # Increase width
+)
+
+# Update y-axis to logarithmic scale
+fig2.update_yaxes(type='log')
+
+# Update marker properties
+fig2.update_traces(
+    marker=dict(
+        color='blue',  # Set a solid color (you can change 'blue' to any color you prefer)
+        line=dict(color='black', width=0),  # This sets the border
+        opacity=0.5,   # Add some transparency
+        sizemode='area',  # Scale size by area instead of diameter
+        sizeref=2.*max(filtered_data['total_user_debt'])/(70**2),  # Scale factor for marker size
+    )
+)
+
+# Display the plot
+st.plotly_chart(fig2, use_container_width=True)
+
+# new_user_position_data.to_csv("./data/user_position_data_with_metrics.csv", index=False)
+
+# Add download buttons for CSV files
+st.header("Download Data")
+
+# Function to convert dataframe to CSV
+@st.cache_data
+def convert_df(df):
+    return df.to_csv().encode('utf-8')
+
+# Download button for new_user_position_data
+csv_user_position = convert_df(new_user_position_data)
+st.download_button(
+    label="Download User Position Data",
+    data=csv_user_position,
+    file_name="user_position_data.csv",
+    mime="text/csv",
+)
+
+# Download button for new_asset_data_df
+csv_asset_data = convert_df(new_asset_data_df)
+st.download_button(
+    label="Download Asset Data",
+    data=csv_asset_data,
+    file_name="asset_data.csv",
+    mime="text/csv",
+)
+
+logger.info("Download buttons for CSV files have been added")
