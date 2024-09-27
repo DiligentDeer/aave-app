@@ -9,6 +9,7 @@ import random
 import ast
 from dotenv import load_dotenv
 from typing import List, Dict, Optional, Union
+from functools import lru_cache
 
 from dune_client.client import DuneClient
 from dune_client.query import QueryBase
@@ -160,11 +161,12 @@ W33 = Web3(HTTPProvider(INFURA_URL))
 
 
 ##### Declare functions #####
-
+@lru_cache(maxsize=None)
 def get_current_unix_timestamp() -> int:
     return int(time.time())
 TIME_STAMP = get_current_unix_timestamp()
 
+@lru_cache(maxsize=None)
 def get_reserve_list(block_number: Optional[int] = None) -> List[Dict[str, Union[str, int]]]:
     
     try:
@@ -185,7 +187,7 @@ def get_reserve_list(block_number: Optional[int] = None) -> List[Dict[str, Union
     except Exception as e:
         return f'Error querying smart contract: {e}'
     
-    
+@lru_cache(maxsize=None)
 def get_asset_data(asset: str, block_number: Optional[int] = None) -> Dict[str, Union[str, int]]:
     
     try:
@@ -237,7 +239,7 @@ def decode_reserve_configuration(config_value: int) -> Dict[str, Union[float, bo
         "virtualAccountingEnabled": bool(get_bits(252, 252))
     }
     
-    
+@lru_cache(maxsize=None)   
 def get_current_price(token_address: str) -> Optional[float]:
     base_url = "https://coins.llama.fi/prices/current"
     url = f"{base_url}/ethereum:{token_address}"
@@ -262,7 +264,9 @@ def merge_and_save(previous_data: pd.DataFrame, new_data: pd.DataFrame, path: st
     
     # Save data
     combined_data.to_csv(path, index=False)
-    
+
+
+@lru_cache(maxsize=None)
 def get_user_balance(user_addrress_list, asset, block_number=None):
     
     try:
@@ -283,7 +287,7 @@ def get_user_balance(user_addrress_list, asset, block_number=None):
     except Exception as e:
         return f'Error querying smart contract: {e}'
     
-
+@lru_cache(maxsize=None)
 def get_supply(asset, block_number=None):
     
     SUPPLY_ABI = [{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]
@@ -305,6 +309,7 @@ def get_supply(asset, block_number=None):
     except Exception as e:
         return f'Error querying smart contract: {e}'
     
+@lru_cache(maxsize=None)
 def get_emode(user_list, block_number=None):
     
     try:
@@ -327,6 +332,7 @@ def get_emode(user_list, block_number=None):
     
 ##### Function in Functions #####
 
+@lru_cache(maxsize=None)
 def get_new_asset_data() -> List[Dict[str, Union[int, str, float]]]:
     asset_list = get_reserve_list()
     
@@ -357,7 +363,7 @@ def get_new_asset_data() -> List[Dict[str, Union[int, str, float]]]:
         
     return data
 
-
+@lru_cache(maxsize=None)
 def get_user_data() -> pd.DataFrame:
     dune = DuneClient(
         api_key=os.getenv('DUNE_API_KEY2'),
@@ -375,6 +381,7 @@ def get_user_data() -> pd.DataFrame:
 
     return users
 
+@lru_cache(maxsize=None)
 def get_user_position_data(users_checksum, asset_data) -> pd.DataFrame:
     
     user_position = []

@@ -111,13 +111,96 @@ debt_symbols = [col[1:] for col in new_df.columns if col.startswith('d') and not
 # Set the locale for number formatting
 locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
-def create_proportion_charts(asset, data, sorted_debt_symbols, new_asset_data):
+# def create_proportion_charts(asset, data, sorted_debt_symbols, new_asset_data):
+#     total = sum(data)
+#     threshold = 0.01  # 1% threshold
+    
+#     # Convert new_asset_data to DataFrame if it's a list
+#     if isinstance(new_asset_data, list):
+#         new_asset_data = pd.DataFrame(new_asset_data)
+    
+#     # Create a list of tuples (debt, value, proportion)
+#     debt_data = list(zip(sorted_debt_symbols, data, [val / total for val in data]))
+    
+#     # Separate data into main categories and others
+#     main_categories = [item for item in debt_data if item[2] >= threshold]
+#     others = [item for item in debt_data if item[2] < threshold]
+    
+#     # Add "Others" category for the pie chart only
+#     if others:
+#         others_value = sum(item[1] for item in others)
+#         others_proportion = sum(item[2] for item in others)
+#         main_categories_with_others = main_categories + [("Others", others_value, others_proportion)]
+#     else:
+#         main_categories_with_others = main_categories
+    
+#     # Sort main categories by value (descending order)
+#     main_categories_with_others.sort(key=lambda x: x[1], reverse=True)
+    
+#     # Unzip the sorted data for the pie chart
+#     labels_pie, values_pie, proportions_pie = zip(*main_categories_with_others)
+    
+#     fig = make_subplots(rows=1, cols=2, specs=[[{'type':'domain'}, {'type':'xy'}]])
+    
+#     # Add pie chart
+#     fig.add_trace(go.Pie(
+#         labels=labels_pie,
+#         values=values_pie,
+#         textinfo='percent',
+#         hoverinfo='label+value+percent',
+#         marker=dict(colors=px.colors.qualitative.Set3)
+#     ), 1, 1)
+    
+#     # Add bar chart
+#     fig.add_trace(go.Bar(
+#         x=[label for label in labels_pie if label != "Others"],
+#         y=[prop * 100 for label, prop in zip(labels_pie, proportions_pie) if label != "Others"],
+#         text=[f'{prop:.1%}' for label, prop in zip(labels_pie, proportions_pie) if label != "Others"],
+#         textposition='auto',
+#         marker_color=px.colors.qualitative.Set3[:len(labels_pie)-1]
+#     ), 1, 2)
+    
+#     # Update layout
+#     fig.update_layout(
+#         title=f"Debt Proportion for {asset}",
+#         height=500,
+#         width=1200,  # Increased width to accommodate both charts
+#     )
+    
+#     # Update bar chart axis
+#     fig.update_yaxes(title_text='Proportion (%)', row=1, col=2)
+#     fig.update_xaxes(title_text='Debt Assets', row=1, col=2)
+    
+    
+    
+    
+    
+#     # Create table data (excluding "Others")
+#     table_data = pd.DataFrame({
+#         'Debt': [item[0] for item in main_categories],
+#         'Value': [item[1] for item in main_categories],
+#         'Proportion': [f'{item[2]:.2%}' for item in main_categories]
+#     })
+    
+#     # Add new columns
+#     for label in table_data['Debt']:
+#         asset_data = new_asset_data[new_asset_data['symbol'] == label]
+#         if not asset_data.empty:
+#             asset_data = asset_data.iloc[0]
+#             table_data.loc[table_data['Debt'] == label, 'Borrow Cap'] = asset_data['borrowCap']
+#             table_data.loc[table_data['Debt'] == label, '% of Borrow Cap'] = 100 * asset_data['debtSupply'] / asset_data['borrowCap'] if asset_data['borrowCap'] != 0 else 0
+#             table_data.loc[table_data['Debt'] == label, 'Current Borrow'] = asset_data['debtSupply']
+#             table_data.loc[table_data['Debt'] == label, 'Current Borrow $'] = asset_data['debtSupply'] * asset_data['price']
+            
+    
+#     # Calculate % of Current Borrow
+#     table_data['% of Current Borrow'] = table_data['Value'] / table_data['Current Borrow $'] * 100
+    
+#     return fig, table_data
+
+def create_proportion_charts(asset, data, sorted_debt_symbols):
     total = sum(data)
     threshold = 0.01  # 1% threshold
-    
-    # Convert new_asset_data to DataFrame if it's a list
-    if isinstance(new_asset_data, list):
-        new_asset_data = pd.DataFrame(new_asset_data)
     
     # Create a list of tuples (debt, value, proportion)
     debt_data = list(zip(sorted_debt_symbols, data, [val / total for val in data]))
@@ -171,9 +254,21 @@ def create_proportion_charts(asset, data, sorted_debt_symbols, new_asset_data):
     fig.update_yaxes(title_text='Proportion (%)', row=1, col=2)
     fig.update_xaxes(title_text='Debt Assets', row=1, col=2)
     
+    return fig
+
+def create_proportion_table(data, sorted_debt_symbols, new_asset_data):
+    total = sum(data)
+    threshold = 0.01  # 1% threshold
     
+    # Convert new_asset_data to DataFrame if it's a list
+    if isinstance(new_asset_data, list):
+        new_asset_data = pd.DataFrame(new_asset_data)
     
+    # Create a list of tuples (debt, value, proportion)
+    debt_data = list(zip(sorted_debt_symbols, data, [val / total for val in data]))
     
+    # Separate data into main categories and others
+    main_categories = [item for item in debt_data if item[2] >= threshold]
     
     # Create table data (excluding "Others")
     table_data = pd.DataFrame({
@@ -191,12 +286,13 @@ def create_proportion_charts(asset, data, sorted_debt_symbols, new_asset_data):
             table_data.loc[table_data['Debt'] == label, '% of Borrow Cap'] = 100 * asset_data['debtSupply'] / asset_data['borrowCap'] if asset_data['borrowCap'] != 0 else 0
             table_data.loc[table_data['Debt'] == label, 'Current Borrow'] = asset_data['debtSupply']
             table_data.loc[table_data['Debt'] == label, 'Current Borrow $'] = asset_data['debtSupply'] * asset_data['price']
-            
     
     # Calculate % of Current Borrow
     table_data['% of Current Borrow'] = table_data['Value'] / table_data['Current Borrow $'] * 100
     
-    return fig, table_data
+    return table_data
+
+
 
 # Create a dictionary to store the data for each asset
 collateral_data = {}
@@ -334,12 +430,12 @@ tab1, tab2 = st.tabs(["Collateral View", "Debt View"])
 
 with tab1:
     st.header("Collateral Analysis")
-    # Existing code for collateral analysis
     selected_asset = st.selectbox('Select a collateral asset:', list(collateral_data.keys()), key='collateral_select')
     
     if selected_asset in collateral_data:
         sorted_debt_symbols, sorted_values = collateral_data[selected_asset]
-        fig, table_data = create_proportion_charts(selected_asset, sorted_values, sorted_debt_symbols, new_asset_data_df)
+        fig = create_proportion_charts(selected_asset, sorted_values, sorted_debt_symbols)
+        table_data = create_proportion_table(sorted_values, sorted_debt_symbols, new_asset_data_df)
         
         st.plotly_chart(fig, use_container_width=True)
         
@@ -349,12 +445,12 @@ with tab1:
 
 with tab2:
     st.header("Debt Analysis")
-    # New code for debt analysis
     selected_debt = st.selectbox('Select a debt asset:', list(debt_data.keys()), key='debt_select')
     
     if selected_debt in debt_data:
         sorted_collateral_symbols, sorted_values = debt_data[selected_debt]
-        fig, table_data = create_proportion_charts(selected_debt, sorted_values, sorted_collateral_symbols, new_asset_data_df)
+        fig = create_proportion_charts(selected_debt, sorted_values, sorted_collateral_symbols)
+        table_data = create_proportion_table(sorted_values, sorted_collateral_symbols, new_asset_data_df)
         
         st.plotly_chart(fig, use_container_width=True)
         
@@ -393,66 +489,78 @@ def calculate_user_metrics(row):
         'total_user_debt': total_user_debt
     })
 
-# Apply the function to new_user_position_data
-new_user_position_data[['total_scaled_collateral', 'total_actual_collateral', 'total_user_debt']] = new_user_position_data.apply(calculate_user_metrics, axis=1)
 
-# Calculate health ratio
-new_user_position_data['health_ratio'] = new_user_position_data['total_scaled_collateral'] / new_user_position_data['total_user_debt']
+@st.cache_data
+def prepare_health_ratio_data(new_user_position_data):
+    # Apply the function to new_user_position_data
+    new_user_position_data[['total_scaled_collateral', 'total_actual_collateral', 'total_user_debt']] = new_user_position_data.apply(calculate_user_metrics, axis=1)
 
-# Replace infinity values with a large number (for cases where total_user_debt is 0)
-new_user_position_data['health_ratio'] = new_user_position_data['health_ratio'].replace([np.inf, -np.inf], 1e6)
+    # Calculate health ratio
+    new_user_position_data['health_ratio'] = new_user_position_data['total_scaled_collateral'] / new_user_position_data['total_user_debt']
 
-# Handle NaN values (for cases where both total_scaled_collateral and total_user_debt are 0)
-new_user_position_data['health_ratio'] = new_user_position_data['health_ratio'].fillna(0)
+    # Replace infinity values with a large number (for cases where total_user_debt is 0)
+    new_user_position_data['health_ratio'] = new_user_position_data['health_ratio'].replace([np.inf, -np.inf], 1e6)
 
-# Filter the dataframe for total_user_debt > 100
-filtered_data = new_user_position_data[new_user_position_data['total_user_debt'] > 100]
-# Filter for emode 0
-filtered_data = filtered_data[filtered_data['emode'] == 0]
+    # Handle NaN values (for cases where both total_scaled_collateral and total_user_debt are 0)
+    new_user_position_data['health_ratio'] = new_user_position_data['health_ratio'].fillna(0)
 
-# Sort the dataframe by health_ratio
-sorted_data = filtered_data.sort_values('health_ratio')
+    # Filter the dataframe for total_user_debt > 100
+    filtered_data = new_user_position_data[new_user_position_data['total_user_debt'] > 100]
+    # Filter for emode 0
+    filtered_data = filtered_data[filtered_data['emode'] == 0]
 
-# Create cumulative_collateral column
-sorted_data['cumulative_collateral'] = sorted_data['total_actual_collateral'].cumsum()
+    # Sort the dataframe by health_ratio
+    sorted_data = filtered_data.sort_values('health_ratio')
 
-# Create the line chart with area and hover information
-fig2 = go.Figure()
+    # Create cumulative_collateral column
+    sorted_data['cumulative_collateral'] = sorted_data['total_actual_collateral'].cumsum()
 
-fig2.add_trace(go.Scatter(
-    x=sorted_data['health_ratio'],
-    y=sorted_data['cumulative_collateral'],
-    fill='tozeroy',
-    fillcolor='rgba(0, 100, 80, 0.2)',
-    line=dict(color='rgb(0, 100, 80)', width=2),
-    name='Cumulative Collateral',
-    hovertemplate='<b>Health Ratio</b>: %{x:.2f}' +
-                  '<br><b>Cumulative Collateral</b>: $%{y:,.2f}' +
-                  '<br><b>Collateral Added</b>: $%{customdata:,.2f}<extra></extra>',
-    customdata=sorted_data['total_actual_collateral']
-))
+    return sorted_data
 
-# Add vertical lines at key health ratios
-for ratio in [1, 1.5]:
-    fig2.add_vline(x=ratio, line_dash="dash", line_color="red", opacity=0.5)
-    y_position = sorted_data.loc[sorted_data['health_ratio'] >= ratio, 'cumulative_collateral'].iloc[0]
-    fig2.add_annotation(x=ratio, y=y_position, text=f"HR = {ratio}", showarrow=True, arrowhead=2, arrowcolor="black")
+@st.cache_data
+def create_health_ratio_chart(sorted_data):
+    fig2 = go.Figure()
 
-# Update layout
-fig2.update_layout(
-    title='User Positions: Cumulative Collateral vs Health Ratio',
-    xaxis_title='Health Ratio',
-    yaxis_title='Cumulative Collateral ($)',
-    xaxis_range=[0, 2.5],
-    height=600,
-    width=1000,
-    hovermode='x unified'
-)
+    fig2.add_trace(go.Scatter(
+        x=sorted_data['health_ratio'],
+        y=sorted_data['cumulative_collateral'],
+        fill='tozeroy',
+        fillcolor='rgba(0, 100, 80, 0.2)',
+        line=dict(color='rgb(0, 100, 80)', width=2),
+        name='Cumulative Collateral',
+        hovertemplate='<b>Health Ratio</b>: %{x:.2f}' +
+                      '<br><b>Cumulative Collateral</b>: $%{y:,.2f}' +
+                      '<br><b>Collateral Added</b>: $%{customdata:,.2f}<extra></extra>',
+        customdata=sorted_data['total_actual_collateral']
+    ))
 
-# Update y-axis to logarithmic scale
-fig2.update_yaxes(type='log')
+    # Add vertical lines at key health ratios
+    for ratio in [1, 1.5]:
+        fig2.add_vline(x=ratio, line_dash="dash", line_color="red", opacity=0.5)
+        y_position = sorted_data.loc[sorted_data['health_ratio'] >= ratio, 'cumulative_collateral'].iloc[0]
+        fig2.add_annotation(x=ratio, y=y_position, text=f"HR = {ratio}", showarrow=True, arrowhead=2, arrowcolor="black")
 
-# Display the plot
+    # Update layout
+    fig2.update_layout(
+        title='User Positions: Cumulative Collateral vs Health Ratio',
+        xaxis_title='Health Ratio',
+        yaxis_title='Cumulative Collateral ($)',
+        xaxis_range=[0, 2.5],
+        height=600,
+        width=1000,
+        hovermode='x unified'
+    )
+
+    # Update y-axis to logarithmic scale
+    fig2.update_yaxes(type='log')
+
+    return fig2
+
+# Prepare data (this will only run once and cache the result)
+sorted_data = prepare_health_ratio_data(new_user_position_data)
+
+# Create and display the chart (this will use cached data)
+fig2 = create_health_ratio_chart(sorted_data)
 st.plotly_chart(fig2, use_container_width=True)
 
 # Add information about total collateral and other metrics
@@ -463,8 +571,6 @@ users_below_1_5 = sorted_data[sorted_data['health_ratio'] < 1.5]['total_actual_c
 st.write(f"Total Collateral: ${total_collateral:,.2f}")
 st.write(f"Collateral with Health Ratio < 1: ${users_below_1:,.2f} ({users_below_1/total_collateral:.2%})")
 st.write(f"Collateral with Health Ratio < 1.5: ${users_below_1_5:,.2f} ({users_below_1_5/total_collateral:.2%})")
-
-
 
 
 
