@@ -30,19 +30,24 @@ def process_data(asset_data, user_data, user_position_data):
 
     # Process asset data
     highest_timestamp_asset_data = asset_data["timestamp"].max()
-    if highest_timestamp_asset_data + 864000 < current_unix_timestamp:
+    if highest_timestamp_asset_data + 86400 < current_unix_timestamp:
         logger.info("Fetching new asset data")
         new_asset_data = get_new_asset_data()
         new_asset_data_df = pd.DataFrame(new_asset_data)
         merge_and_save(asset_data, new_asset_data_df, "./data/asset_data.csv")
     else:
         logger.info("Using existing asset data")
-        new_asset_data = asset_data.loc[asset_data['timestamp'].idxmax()].to_frame().transpose().to_dict(orient='records')[0]
+        highest_timestamp_asset_data = asset_data["timestamp"].max()
+        new_asset_data = asset_data[asset_data['timestamp'] == highest_timestamp_asset_data].to_dict(orient='records')
         new_asset_data_df = asset_data[asset_data['timestamp'] == highest_timestamp_asset_data]
 
+    # print("Type of new_asset_data:", type(new_asset_data))
+    # print("Number of items in new_asset_data:", len(new_asset_data))
+    # print("First item in new_asset_data:", new_asset_data[0] if new_asset_data else "No data")
+    
     # Process user data
     highest_timestamp_user_data = user_data["timestamp"].max()
-    if highest_timestamp_user_data + 864000 < current_unix_timestamp:
+    if highest_timestamp_user_data + 86400 < current_unix_timestamp:
         logger.info("Fetching new user data")
         new_user_data = get_user_data()
         merge_and_save(user_data, new_user_data, "./data/user_data.csv")
@@ -53,9 +58,9 @@ def process_data(asset_data, user_data, user_position_data):
     # Process user position data
     user_addresses = new_user_data['user'].tolist()
     users_checksum = [Web3.to_checksum_address(user) for user in user_addresses]
-
+    
     highest_timestamp_user_position_data = user_position_data["timestamp"].max()
-    if highest_timestamp_user_position_data + 864000 < current_unix_timestamp:
+    if highest_timestamp_user_position_data + 86400 < current_unix_timestamp:
         logger.info("Fetching new user position data")
         new_user_position_data = get_user_position_data(users_checksum, new_asset_data)
         merge_and_save(user_position_data, new_user_position_data, "./data/user_position_data.csv")
@@ -64,6 +69,41 @@ def process_data(asset_data, user_data, user_position_data):
         new_user_position_data = user_position_data[user_position_data['timestamp'] == highest_timestamp_user_position_data]
 
     return new_asset_data_df, new_user_position_data
+
+
+# @st.cache_data
+# def prepare_data_for_prop(new_asset_data_df, new_user_position_data):
+#     extracted_asset_list = new_asset_data_df['symbol'].tolist()
+#     price_dict = dict(zip(new_asset_data_df['symbol'], new_asset_data_df['price']))
+
+#     def get_price(column_name):
+#         if column_name in ['user', 'timestamp']:
+#             return 1
+#         symbol = column_name[1:]
+#         return price_dict.get(symbol, 1)
+
+#     new_df = new_user_position_data.copy()
+#     for column in new_user_position_data.columns:
+#         if column not in ['user', 'timestamp']:
+#             price = get_price(column)
+#             new_df[f'{column}_value'] = new_user_position_data[column] * price
+            
+#     # Calculate sum of all 'a{symbol}_value' for each row
+#     new_df['total_a_value'] = new_df[[f'a{symbol}_value' for symbol in extracted_asset_list if f'a{symbol}_value' in new_df.columns]].sum(axis=1)
+    
+#     # Calculate sum of all 'd{symbol}_value' for each row
+#     new_df['total_d_value'] = new_df[[f'd{symbol}_value' for symbol in extracted_asset_list if f'd{symbol}_value' in new_df.columns]].sum(axis=1)
+    
+#     # Calculate proportions for each asset
+#     for symbol in extracted_asset_list:
+#         if f'a{symbol}_value' in new_df.columns:
+#             new_df[f'a{symbol}_prop'] = new_df[f'a{symbol}_value'] / new_df['total_a_value']
+#         if f'd{symbol}_value' in new_df.columns:
+#             new_df[f'd{symbol}_prop'] = new_df[f'd{symbol}_value'] / new_df['total_d_value']
+    
+#     new_df_prop = new_df
+
+#     return new_df_prop, extracted_asset_list
 
 @st.cache_data
 def prepare_data_for_visualization(new_asset_data_df, new_user_position_data):
@@ -89,8 +129,8 @@ def prepare_collateral_debt_data(new_df, collateral_symbols, debt_symbols):
     collateral_data = {}
     for asset in collateral_symbols:
         heatmap_data = []
+        mask = new_df[f'a{asset}_value'] > 10
         for debt in debt_symbols:
-            mask = new_df[f'a{asset}_value'] > 10
             if f'd{debt}' in new_df.columns:
                 value = new_df.loc[mask, f'd{debt}_value'].sum()
             else:
@@ -105,8 +145,8 @@ def prepare_collateral_debt_data(new_df, collateral_symbols, debt_symbols):
     debt_data = {}
     for debt in debt_symbols:
         heatmap_data = []
+        mask = new_df[f'd{debt}_value'] > 10
         for asset in collateral_symbols:
-            mask = new_df[f'd{debt}_value'] > 10
             if f'a{asset}' in new_df.columns:
                 value = new_df.loc[mask, f'a{asset}_value'].sum()
             else:
@@ -119,6 +159,50 @@ def prepare_collateral_debt_data(new_df, collateral_symbols, debt_symbols):
             debt_data[debt] = (sorted_collateral_symbols, sorted_values)
 
     return collateral_data, debt_data
+
+
+
+# @st.cache_data
+# def prepare_collateral_debt_data_prop(new_df, collateral_symbols, debt_symbols):
+#     collateral_data = {}
+#     for asset in collateral_symbols:
+#         heatmap_data = []
+#         mask = new_df[f'a{asset}_value'] > 10
+#         for debt in debt_symbols:
+#             if f'd{debt}' in new_df.columns and f'a{asset}_prop' in new_df.columns and f'd{debt}_prop' in new_df.columns:
+#                 value = (new_df.loc[mask, f'a{debt}_prop'] * 
+#                          new_df.loc[mask, f'd{debt}_prop'] * 
+#                          new_df.loc[mask, f'd{debt}_value']).sum()
+#             else:
+#                 value = 0
+#             if value >= 100:
+#                 heatmap_data.append((debt, value))
+#         if heatmap_data:
+#             heatmap_data.sort(key=lambda x: x[1], reverse=True)
+#             sorted_debt_symbols, sorted_values = zip(*heatmap_data)
+#             collateral_data[asset] = (sorted_debt_symbols, sorted_values)
+
+#     debt_data = {}
+#     for debt in debt_symbols:
+#         heatmap_data = []
+#         mask = new_df[f'd{debt}_value'] > 10
+#         for asset in collateral_symbols:
+#             if f'a{asset}' in new_df.columns and f'a{asset}_prop' in new_df.columns and f'd{debt}_prop' in new_df.columns:
+#                 value = (new_df.loc[mask, f'a{asset}_prop'] * 
+#                          new_df.loc[mask, f'd{asset}_prop'] * 
+#                          new_df.loc[mask, f'a{asset}_value']).sum()
+#             else:
+#                 value = 0
+#             if value >= 100:
+#                 heatmap_data.append((asset, value))
+#         if heatmap_data:
+#             heatmap_data.sort(key=lambda x: x[1], reverse=True)
+#             sorted_collateral_symbols, sorted_values = zip(*heatmap_data)
+#             debt_data[debt] = (sorted_collateral_symbols, sorted_values)
+
+#     return collateral_data, debt_data
+
+
 
 @st.cache_data
 def create_proportion_charts(asset, data, sorted_debt_symbols):
@@ -229,7 +313,6 @@ def create_proportion_table(data, sorted_symbols, new_asset_data, view_type):
 
     return table_data
 
-@st.cache_data
 def format_table_data(table_data):
     def format_value(val, column):
         if pd.isna(val) or val == '':
@@ -371,18 +454,22 @@ def main():
     customizable asset parameter modifications, and a user-friendly interface for downloading and interacting with data._
     """)
     st.write("_**NOTE**: The dashboard is limited to the most recent snapshot of the data available_")
+    st.write("_**PS**: The dashboard can take upto 10-15 mins to fetch onchain data (~35 Assets * ~40k Users * 2 categories = ~2.8M data points) and make visualizations. I appreciate your patience :)_")
 
     asset_data, user_data, user_position_data = load_initial_data()
     new_asset_data_df, new_user_position_data = process_data(asset_data, user_data, user_position_data)
     new_df, extracted_asset_list = prepare_data_for_visualization(new_asset_data_df, new_user_position_data)
     
-    collateral_symbols = [col[1:] for col in new_df.columns if col.startswith('a') and not col.endswith('_value')]
-    debt_symbols = [col[1:] for col in new_df.columns if col.startswith('d') and not col.endswith('_value')]
+    # new_df.to_csv("new_df.csv")
+    
+    collateral_symbols = [col[1:] for col in new_df.columns if col.startswith('a') and not col.endswith('_value') and not col.endswith('_prop')]
+    debt_symbols = [col[1:] for col in new_df.columns if col.startswith('d') and not col.endswith('_value') and not col.endswith('_prop')]
 
     collateral_data, debt_data = prepare_collateral_debt_data(new_df, collateral_symbols, debt_symbols)
-    
+
     print(json.dumps(collateral_data, indent=4))
-    # print(json.dumps(debt_data, indent=4))
+    print(type(collateral_data))
+    
 
     # Detailed Information Section
     st.header("Detailed Asset Information")
@@ -426,6 +513,7 @@ def main():
     It shows the proportion of the total borrow and supply for each asset, allowing users to understand 
     the distribution of these positions across different assets._
     """)
+
 
     # Collateral and Debt Analysis Tabs
     tab1, tab2 = st.tabs(["Collateral View", "Debt View"])
@@ -560,11 +648,8 @@ def main():
         st.write(f"**Collateral with Health Ratio < 1.1**: ${collateral_below_1_1:,.2f} ({collateral_below_1_1/total_collateral:.2%})")
 
 
-
-
-
     # Download buttons
-    st.header("Download Data")
+    st.write("### Download Data")
     csv_user_position = convert_df(new_df)
     st.download_button(
         label="Download User Position Data",

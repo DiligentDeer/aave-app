@@ -10,6 +10,7 @@ import ast
 from dotenv import load_dotenv
 from typing import List, Dict, Optional, Union
 from functools import lru_cache
+import json
 
 from dune_client.client import DuneClient
 from dune_client.query import QueryBase
@@ -266,7 +267,7 @@ def merge_and_save(previous_data: pd.DataFrame, new_data: pd.DataFrame, path: st
     combined_data.to_csv(path, index=False)
 
 
-@lru_cache(maxsize=None)
+
 def get_user_balance(user_addrress_list, asset, block_number=None):
     
     try:
@@ -309,7 +310,6 @@ def get_supply(asset, block_number=None):
     except Exception as e:
         return f'Error querying smart contract: {e}'
     
-@lru_cache(maxsize=None)
 def get_emode(user_list, block_number=None):
     
     try:
@@ -381,9 +381,13 @@ def get_user_data() -> pd.DataFrame:
 
     return users
 
-@lru_cache(maxsize=None)
 def get_user_position_data(users_checksum, asset_data) -> pd.DataFrame:
     
+    if isinstance(asset_data, str):
+        asset_data = json.loads(asset_data)
+    elif not isinstance(asset_data, list):
+        raise ValueError(f"Expected asset_data to be a list or JSON string, got {type(asset_data)}")
+
     user_position = []
     
     for user in users_checksum:
