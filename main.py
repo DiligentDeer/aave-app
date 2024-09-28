@@ -30,7 +30,7 @@ def process_data(asset_data, user_data, user_position_data):
 
     # Process asset data
     highest_timestamp_asset_data = asset_data["timestamp"].max()
-    if highest_timestamp_asset_data + 86400 < current_unix_timestamp:
+    if highest_timestamp_asset_data + (86400/12) < current_unix_timestamp:
         logger.info("Fetching new asset data")
         new_asset_data = get_new_asset_data()
         new_asset_data_df = pd.DataFrame(new_asset_data)
@@ -467,8 +467,8 @@ def main():
 
     collateral_data, debt_data = prepare_collateral_debt_data(new_df, collateral_symbols, debt_symbols)
 
-    print(json.dumps(collateral_data, indent=4))
-    print(type(collateral_data))
+    # print(json.dumps(collateral_data, indent=4))
+    # print(type(collateral_data))
     
 
     # Detailed Information Section
