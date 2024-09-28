@@ -36,3 +36,7 @@ var/
 
 # Logs
 *.log
+
+# Data
+data copy/
+data copy 2/
