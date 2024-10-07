@@ -9,6 +9,8 @@ import locale
 from plotly.subplots import make_subplots
 import numpy as np
 import json
+from PIL import Image
+import os
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -348,6 +350,16 @@ def create_health_ratio_breakdown(sorted_data):
 
 def main():
     st.set_page_config(layout="wide")
+    
+    # Load LlamaRisk logo
+    logo_path = "./LR_logo_light.png"
+    if os.path.exists(logo_path):
+        logo = Image.open(logo_path)
+    else:
+        logo = None
+    
+    st.image(logo, width=200)
+    
     st.title('AAVE V3 - Dashboard & Sandbox')
     st.write("""
     _This app provides a comprehensive overview of the Aave V3 protocol on Ethereum chain, including detailed analysis of collateral and debt positions, 
