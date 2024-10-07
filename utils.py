@@ -22,6 +22,9 @@ ALCHEMY_KEY = os.getenv("ALCHEMY_KEY_2")
 INFURA_KEY = os.getenv("INFURA_KEY")
 
 ##### Declare constants #####
+
+QUERY_ID = 4101003
+
 BAL_ADDRESS = "0x5c438e0e82607a3a07e6726b10e200739635895b"
 ABI_BAL = [{"inputs":[{"internalType":"address","name":"proxyContractAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[{"internalType":"address[]","name":"addresses","type":"address[]"}],"name":"batchUserEMode","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address[]","name":"addresses","type":"address[]"},{"internalType":"address","name":"tokenAddress","type":"address"}],"name":"checkBalances","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"}]
 
@@ -256,7 +259,20 @@ def get_current_price(token_address: str) -> Optional[float]:
         return None
     
 
-
+def save_new_data(new_data: pd.DataFrame, path: str) -> None:
+    # Delete the existing file if it exists
+    if os.path.exists(path):
+        os.remove(path)
+    
+    # Save the new data
+    new_data.to_csv(path, index=False)
+    
+    # Ensure the file is closed
+    try:
+        with open(path, 'r') as f:
+            pass
+    except IOError:
+        print(f"Warning: Unable to verify if the file {path} is closed.")
 
 
 def merge_and_save(previous_data: pd.DataFrame, new_data: pd.DataFrame, path: str) -> None:
@@ -372,7 +388,7 @@ def get_user_data() -> pd.DataFrame:
     )
 
     query = QueryBase(
-        query_id=4101003,
+        query_id=QUERY_ID,
         params=[],
     )
     
