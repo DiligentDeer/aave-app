@@ -256,7 +256,20 @@ def get_current_price(token_address: str) -> Optional[float]:
         return None
     
 
-
+def save_new_data(new_data: pd.DataFrame, path: str) -> None:
+    # Delete the existing file if it exists
+    if os.path.exists(path):
+        os.remove(path)
+    
+    # Save the new data
+    new_data.to_csv(path, index=False)
+    
+    # Ensure the file is closed
+    try:
+        with open(path, 'r') as f:
+            pass
+    except IOError:
+        print(f"Warning: Unable to verify if the file {path} is closed.")
 
 
 def merge_and_save(previous_data: pd.DataFrame, new_data: pd.DataFrame, path: str) -> None:

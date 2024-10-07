@@ -1,6 +1,6 @@
 import pandas as pd
 from web3 import Web3
-from utils import get_new_asset_data, merge_and_save, get_current_unix_timestamp, get_user_data, get_user_position_data
+from utils import get_new_asset_data, save_new_data, merge_and_save, get_current_unix_timestamp, get_user_data, get_user_position_data
 import logging
 import streamlit as st
 import plotly.graph_objects as go
@@ -34,7 +34,7 @@ def process_data(asset_data, user_data, user_position_data):
         logger.info("Fetching new asset data")
         new_asset_data = get_new_asset_data()
         new_asset_data_df = pd.DataFrame(new_asset_data)
-        merge_and_save(asset_data, new_asset_data_df, "./data/asset_data.csv")
+        save_new_data(new_asset_data_df, "./data/asset_data.csv")
     else:
         logger.info("Using existing asset data")
         highest_timestamp_asset_data = asset_data["timestamp"].max()
@@ -50,7 +50,7 @@ def process_data(asset_data, user_data, user_position_data):
     if highest_timestamp_user_data + 86400 < current_unix_timestamp:
         logger.info("Fetching new user data")
         new_user_data = get_user_data()
-        merge_and_save(user_data, new_user_data, "./data/user_data.csv")
+        save_new_data(new_user_data, "./data/user_data.csv")
     else:
         logger.info("Using existing user data")
         new_user_data = user_data[user_data['timestamp'] == highest_timestamp_user_data]
@@ -63,7 +63,7 @@ def process_data(asset_data, user_data, user_position_data):
     if highest_timestamp_user_position_data + 86400 < current_unix_timestamp:
         logger.info("Fetching new user position data")
         new_user_position_data = get_user_position_data(users_checksum, new_asset_data)
-        merge_and_save(user_position_data, new_user_position_data, "./data/user_position_data.csv")
+        save_new_data(new_user_position_data, "./data/user_position_data.csv")
     else:
         logger.info("Using existing user position data")
         new_user_position_data = user_position_data[user_position_data['timestamp'] == highest_timestamp_user_position_data]
