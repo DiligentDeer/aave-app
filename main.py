@@ -352,7 +352,7 @@ def main():
     st.set_page_config(layout="wide")
     
     # Load LlamaRisk logo
-    logo_path = "./LR_logo_light.png"
+    logo_path = "./LR_PFP_light.jpg"
     if os.path.exists(logo_path):
         logo = Image.open(logo_path)
     else:
@@ -455,7 +455,7 @@ def main():
             _Use this to understand asset distribution, identify high-utilization assets, and assess borrow cap proximity._
             """)
             formatted_table_data = format_table_data(table_data)
-            st.dataframe(formatted_table_data)
+            st.dataframe(formatted_table_data.style.format(), width=1200)
 
     with tab2:
         st.write("### Borrow Asset Analysis")
@@ -488,7 +488,7 @@ def main():
             """)
             
             formatted_table_data = format_table_data(table_data)
-            st.dataframe(formatted_table_data)
+            st.dataframe(formatted_table_data.style.format(), width=1200)
 
     st.header("Current User Position Status & Sandbox")
 
@@ -519,7 +519,7 @@ def main():
         'Percentage': '{:.2%}',
         'Cumulative Collateral': '${:,.2f}',
         'Cumulative Percentage': '{:.2%}'
-    }))
+    }), width=800)
     
     if st.button("Update Health Ratio Chart"):
         modified_asset_mapping = create_modified_asset_mapping(new_asset_data_df, selected_assets, modification_type, modification_values)
@@ -543,7 +543,7 @@ def main():
             'Percentage': '{:.2%}',
             'Cumulative Collateral': '${:,.2f}',
             'Cumulative Percentage': '{:.2%}'
-        }))
+        }), width=800)
 
         # Calculate and display some key metrics
         total_collateral = breakdown_df['Collateral'].sum()
