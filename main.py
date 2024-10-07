@@ -15,7 +15,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Set the locale for number formatting
-locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+
+try:
+    locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+except locale.Error:
+    pass  # Ignore if it fails
 
 @st.cache_data
 def load_initial_data():
