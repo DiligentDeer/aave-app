@@ -352,7 +352,7 @@ def main():
     st.set_page_config(layout="wide")
     
     # Load LlamaRisk logo
-    logo_path = "./LR_PFP_light.jpg"
+    logo_path = "./LR_logo_light.png"
     if os.path.exists(logo_path):
         logo = Image.open(logo_path)
     else:
