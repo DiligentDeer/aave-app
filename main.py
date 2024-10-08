@@ -497,6 +497,8 @@ def main():
     _This section allows you to simulate changes in asset parameters and visualize their impact on the protocol's health ratios. 
     Select assets, modify their liquidation threshold or price, and see how it affects the overall risk profile._
     """)
+    st.write("""
+    _**NOTE**: The health ratio chart and table only updates when the 'Update Health Ratio Chart' button is clicked_""")
 
     selected_assets = st.multiselect("Select assets to modify:", new_asset_data_df['symbol'].tolist())
     modification_type = st.radio("Choose parameter to modify:", ['liquidationThreshold', 'price'])
