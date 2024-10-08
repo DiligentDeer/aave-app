@@ -30,14 +30,15 @@ def load_initial_data():
     user_position_data = pd.read_csv("./data/user_position_data.csv")
     return asset_data, user_data, user_position_data
 
-@st.cache_data
+@st.cache_data(ttl=3600)
 def process_data(asset_data, user_data, user_position_data):
     current_unix_timestamp = get_current_unix_timestamp()
+    logger.info(f"Current Unix Timestamp: {current_unix_timestamp}")
 
     # Process asset data
     highest_timestamp_asset_data = asset_data["timestamp"].max()
     if highest_timestamp_asset_data + (86400/12) < current_unix_timestamp:
-        logger.info("Fetching new asset data")
+        logger.info(f"Fetching new asset data - {highest_timestamp_asset_data + (86400/12)} < {current_unix_timestamp}")
         new_asset_data = get_new_asset_data()
         new_asset_data_df = pd.DataFrame(new_asset_data)
         save_new_data(new_asset_data_df, "./data/asset_data.csv")
@@ -50,7 +51,7 @@ def process_data(asset_data, user_data, user_position_data):
     # Process user data
     highest_timestamp_user_data = user_data["timestamp"].max()
     if highest_timestamp_user_data + 86400 < current_unix_timestamp:
-        logger.info("Fetching new user data")
+        logger.info(f"Fetching new user data - {highest_timestamp_user_data + 86400} < {current_unix_timestamp}")
         new_user_data = get_user_data()
         save_new_data(new_user_data, "./data/user_data.csv")
     else:
@@ -63,7 +64,7 @@ def process_data(asset_data, user_data, user_position_data):
     
     highest_timestamp_user_position_data = user_position_data["timestamp"].max()
     if highest_timestamp_user_position_data + 86400 < current_unix_timestamp:
-        logger.info("Fetching new user position data")
+        logger.info(f"Fetching new user position data - {highest_timestamp_user_position_data + 86400} < {current_unix_timestamp}")
         new_user_position_data = get_user_position_data(users_checksum, new_asset_data)
         save_new_data(new_user_position_data, "./data/user_position_data.csv")
     else:

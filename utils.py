@@ -348,7 +348,6 @@ def get_emode(user_list, block_number=None):
     
 ##### Function in Functions #####
 
-@lru_cache(maxsize=None)
 def get_new_asset_data() -> List[Dict[str, Union[int, str, float]]]:
     asset_list = get_reserve_list()
     
@@ -379,7 +378,6 @@ def get_new_asset_data() -> List[Dict[str, Union[int, str, float]]]:
         
     return data
 
-@lru_cache(maxsize=None)
 def get_user_data() -> pd.DataFrame:
     dune = DuneClient(
         api_key=os.getenv('DUNE_API_KEY2'),
