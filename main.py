@@ -23,7 +23,6 @@ try:
 except locale.Error:
     pass  # Ignore if it fails
 
-@st.cache_data
 def load_initial_data():
     asset_data = pd.read_csv("./data/asset_data.csv")
     user_data = pd.read_csv("./data/user_data.csv")
